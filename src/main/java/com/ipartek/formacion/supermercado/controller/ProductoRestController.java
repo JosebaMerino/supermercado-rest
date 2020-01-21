@@ -1,5 +1,6 @@
 package com.ipartek.formacion.supermercado.controller;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.Charset;
@@ -51,13 +52,11 @@ public class ProductoRestController extends HttpServlet {
 	 */
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		LOG.trace("Peticion GET");
+		String[] pathSplitted = getPathSplitted(request);
 
-		String pathInfo = request.getPathInfo().substring(1);
-		String[] splitted = pathInfo.split("/");
-		LOG.trace(pathInfo.split("/"));
+		if(pathSplitted.length == 0) {
+			// obtener todos los productos que no esten dados de baja de la base de datos
 
-		if(splitted.length == 0) {
-			// obtener productos de la base de datos
 			List<Producto> lista = productoDAO.getAll();
 			if(!lista.isEmpty()) {
 				// prepara la response
@@ -70,7 +69,7 @@ public class ProductoRestController extends HttpServlet {
 				// Convertir de Java a JSON
 
 				String jsonResponseBody = new Gson().toJson(lista); // conversion de java a json
-				out.print(jsonResponseBody); // retornamos un array vacio en Json dentro del body
+				out.print(jsonResponseBody); // "imprimimos" un JSON
 				out.flush();				// termina de escribir dato en response body
 
 				// response status code
@@ -79,37 +78,80 @@ public class ProductoRestController extends HttpServlet {
 				LOG.trace("La lista de productos esta vacia");
 				response.setStatus(HttpServletResponse.SC_NO_CONTENT);
 			}
-		} else if(splitted.length == 1) {
-			String idStr = splitted[0];
-			if(idStr.matches("")) {
+		} else if(pathSplitted.length == 1) {
+			// Obtener un producto en concreto
 
+			response.setContentType("application/json"); // por defecto => text/html; charset=UTF-8
+			response.setCharacterEncoding("UTF-8");
+			String idStr = pathSplitted[0];
+			int id = 0;
+			if(idStr.matches("^\\d+$")) {
+				id = Integer.parseInt(idStr);
 			}
-			Producto producto = productoDAO.getById(1);
+			Producto producto = productoDAO.getById(id);
+			String jsonResponseBody = "";
+			if(producto != null) {
+				jsonResponseBody = new Gson().toJson(producto);
+			}
+
+			PrintWriter out = response.getWriter(); // se encarga de poder escribir datos en el body
+
+			// Convertir de Java a JSON
+
+			out.print(jsonResponseBody); // retornamos un array vacio en Json dentro del body
+			out.flush();				// termina de escribir dato en response body
+
+			response.setStatus(HttpServletResponse.SC_OK);
 		} else {
 			response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
 		}
+	}
+
+	private String[] getPathSplitted(HttpServletRequest request) {
+		String[] resul = null;
+		String pathInfo = request.getPathInfo();
+		String[] emptyArray = new String[0];
+		if(pathInfo == null) {
+			resul = emptyArray;
+		} else if(pathInfo.length() == 1) {
+			resul = emptyArray;
+		} else {
+			pathInfo = request.getPathInfo().substring(1);
+			String[] splitted = pathInfo.split("/");
+			resul = splitted;
+		}
+
+		return resul;
 	}
 
 	/**
 	 * @see HttpServlet#doPost(HttpServletRequest request, HttpServletResponse response)
 	 */
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-		// TODO Auto-generated method stub
-		doGet(request, response);
+		LOG.debug("POST crear recurso");
+
+		// convertir json del request body a Objeto
+		BufferedReader reader = request.getReader();
+		Gson gson = new Gson();
+		Producto producto = gson.fromJson(reader, Producto.class);
+
+		LOG.debug(" Json convertido a Objeto: " + producto);
+
+		response.setStatus( HttpServletResponse.SC_NOT_IMPLEMENTED );
 	}
 
 	/**
 	 * @see HttpServlet#doPut(HttpServletRequest, HttpServletResponse)
 	 */
 	protected void doPut(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-		// TODO Auto-generated method stub
+		response.setStatus( HttpServletResponse.SC_NOT_IMPLEMENTED );
 	}
 
 	/**
 	 * @see HttpServlet#doDelete(HttpServletRequest, HttpServletResponse)
 	 */
 	protected void doDelete(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-		// TODO Auto-generated method stub
+		response.setStatus( HttpServletResponse.SC_NOT_IMPLEMENTED );
 	}
 
 	@Override

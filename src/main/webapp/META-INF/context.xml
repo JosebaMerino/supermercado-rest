@@ -4,7 +4,7 @@
 	    driverClassName="com.mysql.jdbc.Driver"
 		name="jdbc/mydb"
 		type="javax.sql.DataSource"
-		url="jdbc:mysql://192.168.0.89:3308/supermercado"
+		url="jdbc:mysql://localhost:3308/supermercado"
 	   	username="supermercado"
 		password="supermercado"
        logAbandoned="true"
