@@ -22,6 +22,7 @@ import com.google.gson.JsonSyntaxException;
 import com.ipartek.formacion.supermercado.modelo.dao.ProductoDAO;
 import com.ipartek.formacion.supermercado.modelo.pojo.Producto;
 import com.ipartek.formacion.supermercado.pojo.ResponseMensaje;
+import com.ipartek.formacion.supermercado.utils.Utilidades;
 import com.mysql.jdbc.exceptions.jdbc4.MySQLIntegrityConstraintViolationException;
 
 /**
@@ -62,9 +63,10 @@ public class ProductoRestController extends HttpServlet {
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		LOG.trace("Peticion GET");
-		String[] pathSplitted = getPathSplitted(request);
 
 		String jsonResponseBody = "";
+
+		String[] pathSplitted = Utilidades.getPathSplitted(request.getPathInfo());
 
 		if (pathSplitted.length == 0) {
 			// obtener todos los productos que no esten dados de baja de la base de datos
@@ -83,16 +85,25 @@ public class ProductoRestController extends HttpServlet {
 				// response status code
 				response.setStatus(HttpServletResponse.SC_OK);
 			} else {
-				LOG.trace("La lista de productos esta vacia");
 				response.setStatus(HttpServletResponse.SC_NO_CONTENT);
+				LOG.trace("La lista de productos esta vacia");
 			}
 		} else if (pathSplitted.length == 1) {
 			// Obtener un producto en concreto
-
-			String idStr = pathSplitted[0];
-			int id = 0;
-			if (idStr.matches("^\\d+$")) {
-				id = Integer.parseInt(idStr);
+			int id = -1;
+			try {
+				id = Utilidades.obtenerId(request.getPathInfo());
+			} catch (Exception e) {
+				LOG.trace("La url esta mal formada");
+				response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+				enviarMensaje("La url esta mal formada");
+				return;
+			}
+			if (id == -1) {
+				LOG.trace("El dato pasado tiene mal formato");
+				response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+				enviarMensaje("El dato pasado tiene mal formato");
+				return;
 			}
 			Producto producto = productoDAO.getById(id);
 			if (producto != null) {
@@ -127,30 +138,18 @@ public class ProductoRestController extends HttpServlet {
 		LOG.debug("POST crear recurso");
 
 		boolean error = false;
-
-		// convertir json del request body a Objeto
-		BufferedReader reader = request.getReader();
-		Gson gson = new Gson();
-		Producto producto = new Producto();
+		Producto producto = null;
 		try {
-			producto = gson.fromJson(reader, Producto.class);
-		} catch (JsonSyntaxException e) {
-			error = true;
-			LOG.error("La sintaxis del objeto JSON recibido es incorrecta");
-			response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-			enviarMensaje("La sintaxis del JSON enviado es incorrecta");
-			return;
+			producto = requestJSONtoProducto(request, response);
 		} catch (Exception e) {
-			LOG.error(e);
+			return;
 		}
-		LOG.debug(" Json convertido a Objeto: " + producto);
-
 		try {
 			producto = productoDAO.create(producto);
 		} catch (MySQLIntegrityConstraintViolationException e) {
 			String mensaje = e.getMessage();
 			error = true;
-			if(mensaje.contains("Duplicate entry")) {
+			if (mensaje.contains("Duplicate entry")) {
 				LOG.error("Nombre duplicado en la BD");
 
 				enviarMensaje("El nombre esta duplicado en la BD");
@@ -168,10 +167,10 @@ public class ProductoRestController extends HttpServlet {
 
 			response.setStatus(HttpServletResponse.SC_CONFLICT);
 			enviarMensaje("No se ha podido crear el producto en la BD");
-	}
+		}
 
-		if(!error){
-			//TODO: validar producto
+		if (!error) {
+			// TODO: validar producto
 			response.setStatus(HttpServletResponse.SC_CREATED);
 			String jsonResponseBody = new Gson().toJson(producto);
 
@@ -190,7 +189,60 @@ public class ProductoRestController extends HttpServlet {
 	 */
 	protected void doPut(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
-		response.setStatus(HttpServletResponse.SC_NOT_IMPLEMENTED);
+
+		int id = -1;
+		try {
+			id = Utilidades.obtenerId(request.getPathInfo());
+		} catch (Exception e) {
+			LOG.error("La URL esta mal formada");
+			LOG.error(e);
+
+			response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+			enviarMensaje("La URL esta mal formada");
+			return;
+		}
+
+		if (id == -1) {
+			LOG.error("Id negativo, no se puede realizar la actualizacion");
+
+			response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+			enviarMensaje("Id negativo, no se puede realizar la actualizacion");
+			return;
+		}
+
+		Producto producto = null;
+		try {
+			producto = requestJSONtoProducto(request, response);
+		} catch (Exception e) {
+			return;
+		}
+
+		try {
+			productoDAO.update(id, producto);
+		} catch (MySQLIntegrityConstraintViolationException e) {
+			String mensaje = e.getMessage();
+			if (mensaje.contains("Duplicate entry")) {
+				LOG.error("Nombre duplicado en la BD");
+
+				enviarMensaje("El nombre esta duplicado en la BD");
+				response.setStatus(HttpServletResponse.SC_CONFLICT);
+			} else {
+				LOG.error("Violacion de las restricciones de integridad");
+
+				enviarMensaje("Violacion de las restricciones de integridad");
+				response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+			}
+		} catch (Exception e) {
+			LOG.error("No lo puede actualizar");
+
+			response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+			enviarMensaje("Id negativo, no se puede realizar la actualizacion");
+			return;
+		}
+
+		response.setStatus(HttpServletResponse.SC_OK);
+
+
 	}
 
 	/**
@@ -207,32 +259,50 @@ public class ProductoRestController extends HttpServlet {
 		super.destroy();
 	}
 
-	private String[] getPathSplitted(HttpServletRequest request) {
-		String[] resul = null;
-		String pathInfo = request.getPathInfo();
-		String[] emptyArray = new String[0];
-		if (pathInfo == null) {
-			resul = emptyArray;
-		} else if (pathInfo.length() == 1) {
-			resul = emptyArray;
-		} else {
-			pathInfo = request.getPathInfo().substring(1);
-			String[] splitted = pathInfo.split("/");
-			resul = splitted;
-		}
-
-		return resul;
-	}
-
 	/**
 	 * Mete en el body un mensaje para dar una explicacion mas extensa
 	 *
 	 * @param mensaje: mensaje que se enviará en el body
 	 */
 	private void enviarMensaje(String mensaje) {
+
 		String jsonResponseBody = new Gson().toJson(new ResponseMensaje(mensaje));
 		out.print(jsonResponseBody);
 		out.flush();
+	}
+
+	/**
+	 * Intenta obtener un producto de la request body
+	 *
+	 * @param request
+	 * @param response
+	 * @return un producto si puede parsearlo
+	 * @throws Exception: si no puede parsear el producto
+	 */
+	private Producto requestJSONtoProducto(HttpServletRequest request, HttpServletResponse response) throws Exception {
+		// convertir json del request body a Objeto
+		BufferedReader reader = request.getReader();
+		Gson gson = new Gson();
+		Producto producto = null;
+		try {
+			producto = gson.fromJson(reader, Producto.class);
+		} catch (JsonSyntaxException e) {
+			LOG.error("La sintaxis del objeto JSON recibido es incorrecta");
+			response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+			enviarMensaje("La sintaxis del JSON enviado es incorrecta");
+		} catch (NumberFormatException e) {
+			response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+			enviarMensaje("El formato de un numero pasado es incorrecto");
+			LOG.error(e);
+		} catch (Exception e) {
+			LOG.error(e);
+		}
+		LOG.debug(" Json convertido a Objeto: " + producto);
+
+		if (producto == null) {
+			throw new Exception();
+		}
+		return producto;
 	}
 
 }
