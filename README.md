@@ -1,3 +1,5 @@
 # GRUPO MIKEL Y JOSEBA
 
 # TRELLO: (tablero) [https://trello.com/b/2NvZBVdm/ipartekmkljsb]
+
+ PONER EL CODIGO DE ESTADO AL PRINCIPIO ANTES DE EMPEZAR A IMPRIMIR
