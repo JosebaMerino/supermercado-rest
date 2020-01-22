@@ -18,9 +18,11 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonSyntaxException;
 import com.ipartek.formacion.supermercado.modelo.dao.ProductoDAO;
 import com.ipartek.formacion.supermercado.modelo.pojo.Producto;
 import com.ipartek.formacion.supermercado.pojo.ResponseMensaje;
+import com.mysql.jdbc.exceptions.jdbc4.MySQLIntegrityConstraintViolationException;
 
 /**
  * Servlet implementation class ProductoRestController
@@ -123,23 +125,63 @@ public class ProductoRestController extends HttpServlet {
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		LOG.debug("POST crear recurso");
-		response.setStatus(HttpServletResponse.SC_NOT_IMPLEMENTED);
+
+		boolean error = false;
 
 		// convertir json del request body a Objeto
 		BufferedReader reader = request.getReader();
 		Gson gson = new Gson();
 		Producto producto = new Producto();
-		producto = gson.fromJson(reader, Producto.class);
+		try {
+			producto = gson.fromJson(reader, Producto.class);
+		} catch (JsonSyntaxException e) {
+			error = true;
+			LOG.error("La sintaxis del objeto JSON recibido es incorrecta");
+			response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+			enviarMensaje("La sintaxis del JSON enviado es incorrecta");
+			return;
+		} catch (Exception e) {
+			LOG.error(e);
+		}
 		LOG.debug(" Json convertido a Objeto: " + producto);
 
-		String jsonResponseBody = new Gson().toJson(new ResponseMensaje("Hola ni idea de si furula"));
+		try {
+			producto = productoDAO.create(producto);
+		} catch (MySQLIntegrityConstraintViolationException e) {
+			String mensaje = e.getMessage();
+			error = true;
+			if(mensaje.contains("Duplicate entry")) {
+				LOG.error("Nombre duplicado en la BD");
 
-		PrintWriter out = response.getWriter(); // se encarga de poder escribir datos en el body
+				enviarMensaje("El nombre esta duplicado en la BD");
+				response.setStatus(HttpServletResponse.SC_CONFLICT);
+			} else {
+				LOG.error("Violacion de las restricciones de integridad");
 
-		// Convertir de Java a JSON
+				enviarMensaje("Violacion de las restricciones de integridad");
+				response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+			}
+		} catch (Exception e) {
+			error = true;
+			LOG.error("No se ha podido crear el Producto en la BD");
+			LOG.error(e);
 
-		out.print(jsonResponseBody); // retornamos un array vacio en Json dentro del body
-		out.flush(); // termina de escribir dato en response body
+			response.setStatus(HttpServletResponse.SC_CONFLICT);
+			enviarMensaje("No se ha podido crear el producto en la BD");
+	}
+
+		if(!error){
+			//TODO: validar producto
+			response.setStatus(HttpServletResponse.SC_CREATED);
+			String jsonResponseBody = new Gson().toJson(producto);
+
+			PrintWriter out = response.getWriter(); // se encarga de poder escribir datos en el body
+
+			// Convertir de Java a JSON
+
+			out.print(jsonResponseBody); // retornamos un array vacio en Json dentro del body
+			out.flush(); // termina de escribir dato en response body
+		}
 
 	}
 
