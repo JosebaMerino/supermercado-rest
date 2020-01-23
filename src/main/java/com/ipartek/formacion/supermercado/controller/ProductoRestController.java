@@ -35,6 +35,8 @@ public class ProductoRestController extends HttpServlet {
 	private final static Logger LOG = LogManager.getLogger(ProductoRestController.class);
 
 	PrintWriter out = null;
+	private int responseStatus;
+	private Object responseBody;
 
 	private ProductoDAO productoDAO;
 
@@ -51,11 +53,22 @@ public class ProductoRestController extends HttpServlet {
 	 */
 	protected void service(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
+		responseBody = null;
+
 		response.setContentType("application/json"); // por defecto => text/html; charset=UTF-8
 		response.setCharacterEncoding("UTF-8");
 		out = response.getWriter();
+
 		super.service(request, response); // Llama a doGet, o doPost o doPut o doDelete
+
+		response.setStatus(responseStatus);
+		String jsonResponseBody = new Gson().toJson(responseBody); // conversion de java a json
+		out.print(jsonResponseBody); // "imprimimos" un JSON
+		out.flush(); // termina de escribir dato en response body
+
 	}
+
+	//TODO: hacer una clase para las validaciones
 
 	/**
 	 * @see HttpServlet#doGet(HttpServletRequest request, HttpServletResponse
@@ -72,8 +85,7 @@ public class ProductoRestController extends HttpServlet {
 			id = Utilidades.obtenerId(request.getPathInfo());
 		} catch (Exception e) {
 			LOG.trace("La url esta mal formada");
-			response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-			enviarMensaje("La url esta mal formada");
+			enviarMensaje(HttpServletResponse.SC_BAD_REQUEST, "La url esta mal formada");
 			return;
 		}
 
@@ -82,39 +94,20 @@ public class ProductoRestController extends HttpServlet {
 
 			List<Producto> lista = productoDAO.getAll();
 			if (!lista.isEmpty()) {
-
 				// response body
+				setRespose(HttpServletResponse.SC_OK, lista);
 
-				// Convertir de Java a JSON
-
-				jsonResponseBody = new Gson().toJson(lista); // conversion de java a json
-				out.print(jsonResponseBody); // "imprimimos" un JSON
-				out.flush(); // termina de escribir dato en response body
-
-				// response status code
-				response.setStatus(HttpServletResponse.SC_OK);
 			} else {
-				response.setStatus(HttpServletResponse.SC_NO_CONTENT);
+				responseStatus = HttpServletResponse.SC_NO_CONTENT;
 				LOG.trace("La lista de productos esta vacia");
 			}
 		} else {
 			// Obtener un producto en concreto
 			Producto producto = productoDAO.getById(id);
 			if (producto != null) {
-				jsonResponseBody = "";
-				if (producto != null) {
-					jsonResponseBody = new Gson().toJson(producto);
-				}
-
-				// Convertir de Java a JSON
-
-				out.print(jsonResponseBody); // retornamos un array vacio en Json dentro del body
-				out.flush(); // termina de escribir dato en response body
-
-				response.setStatus(HttpServletResponse.SC_OK);
+				setRespose(HttpServletResponse.SC_OK, producto);
 			} else {
-				response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-				enviarMensaje("No se ha encontrado el producto con id: " + id);
+				enviarMensaje(HttpServletResponse.SC_NOT_FOUND, "No se ha encontrado el producto con id: " + id);
 			}
 		}
 	}
@@ -232,13 +225,12 @@ public class ProductoRestController extends HttpServlet {
 			return;
 		}
 
-		if(!enviado) {
+		if (!enviado) {
 			response.setStatus(HttpServletResponse.SC_OK);
 			String jsonResponseBody = new Gson().toJson(producto);
 			out.print(jsonResponseBody);
 			out.flush();
 		}
-
 
 	}
 
@@ -260,13 +252,13 @@ public class ProductoRestController extends HttpServlet {
 			enviado = true;
 		}
 
-		if(!enviado && id == -1) {
+		if (!enviado && id == -1) {
 			LOG.error("URL incorrecta");
 			enviarMensaje("URL incorrecta");
 			enviado = true;
 		}
 
-		if(!enviado) {
+		if (!enviado) {
 			try {
 				producto = productoDAO.delete(id);
 				response.setStatus(HttpServletResponse.SC_OK);
@@ -299,6 +291,22 @@ public class ProductoRestController extends HttpServlet {
 		String jsonResponseBody = new Gson().toJson(new ResponseMensaje(mensaje));
 		out.print(jsonResponseBody);
 		out.flush();
+	}
+
+	/**
+	 * Facilita el envio de mensajes creando y estableciendo valores.
+	 *
+	 * @param statusCode
+	 * @param mensaje
+	 */
+	private void enviarMensaje(int statusCode, String mensaje) {
+		responseStatus = statusCode;
+		responseBody = new ResponseMensaje(mensaje);
+	}
+
+	private void setRespose(int statusCode, Object objeto) {
+		responseStatus = statusCode;
+		responseBody = objeto;
 	}
 
 	/**
