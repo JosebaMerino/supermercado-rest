@@ -67,9 +67,17 @@ public class ProductoRestController extends HttpServlet {
 
 		String jsonResponseBody = "";
 
-		String[] pathSplitted = Utilidades.getPathSplitted(request.getPathInfo());
+		int id = -1;
+		try {
+			id = Utilidades.obtenerId(request.getPathInfo());
+		} catch (Exception e) {
+			LOG.trace("La url esta mal formada");
+			response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+			enviarMensaje("La url esta mal formada");
+			return;
+		}
 
-		if (pathSplitted.length == 0) {
+		if (id == -1) {
 			// obtener todos los productos que no esten dados de baja de la base de datos
 
 			List<Producto> lista = productoDAO.getAll();
@@ -89,23 +97,8 @@ public class ProductoRestController extends HttpServlet {
 				response.setStatus(HttpServletResponse.SC_NO_CONTENT);
 				LOG.trace("La lista de productos esta vacia");
 			}
-		} else if (pathSplitted.length == 1) {
+		} else {
 			// Obtener un producto en concreto
-			int id = -1;
-			try {
-				id = Utilidades.obtenerId(request.getPathInfo());
-			} catch (Exception e) {
-				LOG.trace("La url esta mal formada");
-				response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-				enviarMensaje("La url esta mal formada");
-				return;
-			}
-			if (id == -1) {
-				LOG.trace("El dato pasado tiene mal formato");
-				response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-				enviarMensaje("El dato pasado tiene mal formato");
-				return;
-			}
 			Producto producto = productoDAO.getById(id);
 			if (producto != null) {
 				jsonResponseBody = "";
@@ -123,10 +116,6 @@ public class ProductoRestController extends HttpServlet {
 				response.setStatus(HttpServletResponse.SC_NOT_FOUND);
 				enviarMensaje("No se ha encontrado el producto con id: " + id);
 			}
-		} else {
-			response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-			enviarMensaje("La solicitud realizada tiene parametros de más");
-
 		}
 	}
 
