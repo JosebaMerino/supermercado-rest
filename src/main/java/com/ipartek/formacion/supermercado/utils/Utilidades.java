@@ -55,4 +55,17 @@ public class Utilidades  {
 		}
 		return resul;
 	}
+
+	public static int contarPalabras(String frase) {
+		int resul = 0;
+		if(frase != null) {
+			frase = frase.replaceAll("[\\W\\_]", " ");
+			frase = frase.trim();
+			if (frase.length() != 0) {
+			String[] spliteada = frase.split("(\\s)+");
+			resul = spliteada.length;
+			}
+		}
+		return resul;
+	}
 }

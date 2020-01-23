@@ -42,4 +42,21 @@ public class UtilidadesTest {
 
 	}
 
+	@Test
+	public void contarPalabrasTest1() {
+		assertEquals(0, Utilidades.contarPalabras(null));
+		assertEquals(0, Utilidades.contarPalabras(""));
+		assertEquals(0, Utilidades.contarPalabras("     "));
+		assertEquals(2, Utilidades.contarPalabras("hola caracola"));
+		assertEquals(2, Utilidades.contarPalabras("hola         mundo"));
+		assertEquals(2, Utilidades.contarPalabras("     hola         mundo      "));
+	}
+
+	@Test
+	public void contarPalabrasTest2() {
+		assertEquals(2, Utilidades.contarPalabras("Ho44la, mu33ndo"));
+		assertEquals(2, Utilidades.contarPalabras("hola44 ? 22mundo"));
+		assertEquals(2, Utilidades.contarPalabras("??hola44__ __ -- ^^()/&%$·{}? 22mundo"));
+	}
+
 }
