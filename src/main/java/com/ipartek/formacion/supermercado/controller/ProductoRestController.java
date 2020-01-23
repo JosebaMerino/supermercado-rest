@@ -13,6 +13,7 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.swing.text.Utilities;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -189,6 +190,7 @@ public class ProductoRestController extends HttpServlet {
 	 */
 	protected void doPut(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
+		boolean enviado = false;
 
 		int id = -1;
 		try {
@@ -203,10 +205,10 @@ public class ProductoRestController extends HttpServlet {
 		}
 
 		if (id == -1) {
-			LOG.error("Id negativo, no se puede realizar la actualizacion");
+			LOG.error("Id incorrecto, no se puede realizar la actualizacion");
 
 			response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-			enviarMensaje("Id negativo, no se puede realizar la actualizacion");
+			enviarMensaje("Id incorrecto, no se puede realizar la actualizacion");
 			return;
 		}
 
@@ -218,8 +220,9 @@ public class ProductoRestController extends HttpServlet {
 		}
 
 		try {
-			productoDAO.update(id, producto);
+			producto = productoDAO.update(id, producto);
 		} catch (MySQLIntegrityConstraintViolationException e) {
+			enviado = true;
 			String mensaje = e.getMessage();
 			if (mensaje.contains("Duplicate entry")) {
 				LOG.error("Nombre duplicado en la BD");
@@ -236,11 +239,16 @@ public class ProductoRestController extends HttpServlet {
 			LOG.error("No lo puede actualizar");
 
 			response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-			enviarMensaje("Id negativo, no se puede realizar la actualizacion");
+			enviarMensaje("No lo puede actualizar");
 			return;
 		}
 
-		response.setStatus(HttpServletResponse.SC_OK);
+		if(!enviado) {
+			response.setStatus(HttpServletResponse.SC_OK);
+			String jsonResponseBody = new Gson().toJson(producto);
+			out.print(jsonResponseBody);
+			out.flush();
+		}
 
 
 	}
@@ -250,7 +258,40 @@ public class ProductoRestController extends HttpServlet {
 	 */
 	protected void doDelete(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
-		response.setStatus(HttpServletResponse.SC_NOT_IMPLEMENTED);
+
+		int id = -1;
+		boolean enviado = false;
+		Producto producto = null;
+
+		try {
+			id = Utilidades.obtenerId(request.getPathInfo());
+		} catch (Exception e) {
+			LOG.error("URL mal formada");
+			enviarMensaje("URL mal formada");
+			enviado = true;
+		}
+
+		if(!enviado && id == -1) {
+			LOG.error("URL incorrecta");
+			enviarMensaje("URL incorrecta");
+			enviado = true;
+		}
+
+		if(!enviado) {
+			try {
+				producto = productoDAO.delete(id);
+				response.setStatus(HttpServletResponse.SC_OK);
+				String jsonResponseBody = new Gson().toJson(producto);
+				out.print(jsonResponseBody);
+				out.flush();
+
+			} catch (Exception e) {
+				LOG.error("URL incorrecta");
+				enviarMensaje("URL incorrecta");
+				enviado = true;
+			}
+		}
+
 	}
 
 	@Override
