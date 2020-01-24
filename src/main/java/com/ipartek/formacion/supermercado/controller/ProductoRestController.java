@@ -3,17 +3,19 @@ package com.ipartek.formacion.supermercado.controller;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.nio.charset.Charset;
-import java.util.ArrayList;
 import java.util.List;
 
+import javax.servlet.Servlet;
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.swing.text.Utilities;
+import javax.ws.rs.GET;
+import javax.ws.rs.Path;
+import javax.ws.rs.Produces;
+import javax.ws.rs.core.MediaType;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -26,6 +28,12 @@ import com.ipartek.formacion.supermercado.pojo.ResponseMensaje;
 import com.ipartek.formacion.supermercado.utils.Utilidades;
 import com.mysql.jdbc.exceptions.jdbc4.MySQLIntegrityConstraintViolationException;
 
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiResponse;
+import io.swagger.annotations.ApiResponses;
+import io.swagger.jaxrs.config.BeanConfig;
+
 
 
 /*
@@ -36,6 +44,8 @@ import com.mysql.jdbc.exceptions.jdbc4.MySQLIntegrityConstraintViolationExceptio
 /**
  * Servlet implementation class ProductoRestController
  */
+@Path("/")
+@Api(tags={"todo"})
 @WebServlet({ "/producto/*" })
 public class ProductoRestController extends HttpServlet {
 	private static final long serialVersionUID = 1L;
@@ -47,11 +57,21 @@ public class ProductoRestController extends HttpServlet {
 
 	private ProductoDAO productoDAO;
 
+	BeanConfig beanConfig;
+
 	/**
 	 * @see Servlet#init(ServletConfig)
 	 */
 	public void init(ServletConfig config) throws ServletException {
 		productoDAO = ProductoDAO.getInstance();
+
+		  beanConfig = new BeanConfig();
+
+		  beanConfig.setVersion("1.0.0");
+		  beanConfig.setTitle("Todo API");
+		  beanConfig.setBasePath("/todo/api");
+		  beanConfig.setResourcePackage("com.synaptik.javaee");
+		  beanConfig.setScan(true);
 	}
 
 	/**
@@ -60,6 +80,13 @@ public class ProductoRestController extends HttpServlet {
 	 */
 	protected void service(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
+
+		//TODO: esto deberia estar en un filtro
+		response.addHeader("Access-Control-Allow-Origin", "*");
+		response.addHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, PUT");
+		response.addHeader("Access-Control-Allow-Headers", "Content-Type");
+
+
 		responseBody = null;
 
 		response.setContentType("application/json"); // por defecto => text/html; charset=UTF-8
@@ -81,6 +108,13 @@ public class ProductoRestController extends HttpServlet {
 	 * @see HttpServlet#doGet(HttpServletRequest request, HttpServletResponse
 	 *      response)
 	 */
+
+	  @GET
+	  @Produces(MediaType.APPLICATION_JSON)
+	  @ApiOperation(value = "Fetch all to dos")
+	  @ApiResponses({
+	  @ApiResponse(code=200, message="Success")
+	  })
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		LOG.trace("Peticion GET");
