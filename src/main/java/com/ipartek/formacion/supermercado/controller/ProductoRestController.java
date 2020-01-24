@@ -26,6 +26,13 @@ import com.ipartek.formacion.supermercado.pojo.ResponseMensaje;
 import com.ipartek.formacion.supermercado.utils.Utilidades;
 import com.mysql.jdbc.exceptions.jdbc4.MySQLIntegrityConstraintViolationException;
 
+
+
+/*
+ * https://refactoring.guru/refactoring/catalog
+ *
+ * */
+
 /**
  * Servlet implementation class ProductoRestController
  */
@@ -78,8 +85,6 @@ public class ProductoRestController extends HttpServlet {
 			throws ServletException, IOException {
 		LOG.trace("Peticion GET");
 
-		String jsonResponseBody = "";
-
 		int id = -1;
 		try {
 			id = Utilidades.obtenerId(request.getPathInfo());
@@ -90,25 +95,41 @@ public class ProductoRestController extends HttpServlet {
 		}
 
 		if (id == -1) {
-			// obtener todos los productos que no esten dados de baja de la base de datos
-
-			List<Producto> lista = productoDAO.getAll();
-			if (!lista.isEmpty()) {
-				// response body
-				setRespose(HttpServletResponse.SC_OK, lista);
-
-			} else {
-				responseStatus = HttpServletResponse.SC_NO_CONTENT;
-				LOG.trace("La lista de productos esta vacia");
-			}
+			String orden = request.getParameter("_orden");
+			String columna = request.getParameter("columna");
+			listar(orden, columna);
 		} else {
-			// Obtener un producto en concreto
-			Producto producto = productoDAO.getById(id);
-			if (producto != null) {
-				setRespose(HttpServletResponse.SC_OK, producto);
-			} else {
-				enviarMensaje(HttpServletResponse.SC_NOT_FOUND, "No se ha encontrado el producto con id: " + id);
-			}
+			obtenerPorId(id);
+		}
+	}
+
+
+	private void obtenerPorId(int id) {
+		// Obtener un producto en concreto
+		Producto producto = productoDAO.getById(id);
+		if (producto != null) {
+			setRespose(HttpServletResponse.SC_OK, producto);
+		} else {
+			enviarMensaje(HttpServletResponse.SC_NOT_FOUND, "No se ha encontrado el producto con id: " + id);
+		}
+	}
+
+	private void listar(String orden, String columna) {
+		// obtener todos los productos que no esten dados de baja de la base de datos
+
+		List<Producto> lista = null;
+		if(orden == null || columna == null) {
+			 lista = productoDAO.getAll();
+		} else {
+			lista = productoDAO.getAllOrdered(columna, orden);
+		}
+		if (!lista.isEmpty()) {
+			// response body
+			setRespose(HttpServletResponse.SC_OK, lista);
+
+		} else {
+			responseStatus = HttpServletResponse.SC_NO_CONTENT;
+			LOG.trace("La lista de productos esta vacia");
 		}
 	}
 
